@@ -1,11 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 import os
 import time
 from types import SimpleNamespace
-
 import random
 import numpy as np
 
@@ -238,6 +236,32 @@ def train_model(
             model.train()
 
     return loss_vec, accuracy_vec
+
+
+# ============ testing procedure ============
+def eval_model_accuracy(
+    model,
+    test_conc,
+    test_labels,
+    num_data,
+    num_training,
+    test_batch_size,
+    device):
+
+    model.eval()
+    test_accuracy = torch.zeros(1)
+
+    with torch.no_grad():
+        test_idx = torch.randint(0, num_data - num_training, (test_batch_size,))
+        x_test = test_conc[:, test_idx].to(device)
+        y_test = test_labels[test_idx].view(-1, 1).float().to(device)
+
+        pred = model(x_test)
+        predicted_labels = (pred > 0.5).float()
+        accuracy = (predicted_labels == y_test).float().mean().item()
+        test_accuracy = accuracy
+
+    return test_accuracy
 
 
 # ============ some basic functions ============
