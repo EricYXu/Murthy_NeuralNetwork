@@ -107,8 +107,7 @@ def generate_custom_dataset(m, n, device, num_data=10000, training_frac=0.8, thr
     odor_conc = pre_odor_conc.to(device) 
 
     # Generate labels based on threshold on first odor channel
-    for idx in threshold_array: # NOTE: this needs to be fixed to allow for multiple thresholds
-        labels = (odor_conc[idx, :] > threshold).long().to(device)
+    labels = (odor_conc[0, :] > threshold).long().to(device)
 
     # Split data
     train_conc = odor_conc[:, :num_training]
