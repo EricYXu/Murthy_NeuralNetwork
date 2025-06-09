@@ -15,10 +15,12 @@ class enose(nn.Module):
         super().__init__()
         self.m = init_parameters.m # input dimension
         self.n = init_parameters.n # meansurement dimension
+        # self.q = init_parameters.q # hidden variable dimension
         self.W  = init_parameters.W  ## if init_parameters.W else 
 
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         self.fc1 = nn.Linear( self.n, 1 ).to(device) # fully-connected layer that takes self.n inputs to produce 1 output
+        # self.fc2 = nn.Linear( q, 1 ).to(device)
         self.activation = activation # sets the activation 
 
     def forward(self, x): # runs a forward pass 
@@ -30,9 +32,9 @@ class enose(nn.Module):
 
 # ============ dataset and precision evaluation ============
 
-def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balanced=True, threshold=0.1, bounds=(0,1), sparsity_idx=None):
+def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, threshold=0.1):
     """
-    Generate a balanced/unbalanced synthetic odor concentration data and labels based on a threshold.
+    Generate synthetic odor concentration data and labels based on a threshold.
     
     Args:
         m (int): Input dimension
@@ -42,9 +44,6 @@ def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balance
         training_frac (float): Fraction of samples used for training
         store_image (bool): If True, creates a folder for saving images
         threshold (float): Threshold for label generation
-        bounds (tuple): Lower and upper Bounds to sample values from
-        is_balanced (bool): If True, creates an approximately equal number of above-threshold and below-threshold data points
-        sparsity_idx (int): Row number where rows at index and below are set to zero 
     
     Returns:
         A SimpleNamespace containing:
@@ -56,23 +55,105 @@ def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balance
     input_dim = m
     num_training = int(num_data * training_frac)
 
-    # Generate input data on [bounds[0], bounds[1])
+    # Generate input data on [0, 1)
+    odor_conc = torch.rand(input_dim, num_data).to(device)
+
+    # Generate labels based on threshold on first odor channel
+    labels = (odor_conc[0, :] > threshold).long().to(device)
+
+    # Split data
+    train_conc = odor_conc[:, :num_training]
+    train_labels = labels[:num_training]
+    test_conc = odor_conc[:, num_training:]
+    test_labels = labels[num_training:]
+
+    return SimpleNamespace(
+        odor_conc=odor_conc,
+        labels=labels,
+        train_conc=train_conc,
+        train_labels=train_labels,
+        test_conc=test_conc,
+        test_labels=test_labels
+    )
+
+
+def generate_custom_dataset(m, n, device, num_data=10000, training_frac=0.8, threshold=0.1, lower_bound=0, upper_bound=1, threshold_array=[0]):
+    """
+    Generate synthetic odor concentration data and labels based on a threshold but over a specified interval that 
+    need not be [0,1).
+    
+    Args:
+        m (int): Input dimension
+        n (int): Output dimension (not used here, just for image folder naming)
+        device (torch.device): Computation device
+        num_data (int): Total number of samples
+        training_frac (float): Fraction of samples used for training
+        store_image (bool): If True, creates a folder for saving images
+        threshold (float): Threshold for label generation
+    
+    Returns:
+        A SimpleNamespace containing:
+            - odor_conc: [m x num_data] full concentration tensor
+            - labels: [num_data] binary labels
+            - train_conc, train_labels
+            - test_conc, test_labels
+    """
+    input_dim = m
+    num_training = int(num_data * training_frac)
+
+    # Generate input data on [lower_bound, upper_bound)
     pre_odor_conc = torch.rand(input_dim, num_data)
-    pre_odor_conc = pre_odor_conc * (bounds[1] - bounds[0]) + torch.ones_like(pre_odor_conc) * bounds[0]
-
-    # Creates a sparse set of rows at and below index
-    if sparsity_idx != None:
-        pre_odor_conc[sparsity_idx:, :] = 0
-
+    pre_odor_conc = pre_odor_conc * (upper_bound - lower_bound) + torch.ones_like(pre_odor_conc) * lower_bound
     odor_conc = pre_odor_conc.to(device) 
 
-    # Checks if user wants a balanced simulated odor dataset; better for supervised classification
-    if is_balanced:
-        index_tensor = (torch.rand(num_data) > 0.5).int()
-        below_tensor = (torch.rand(num_data) * (threshold - bounds[0]) + torch.ones(num_data) * bounds[0]) * index_tensor
-        above_tensor = (torch.rand(num_data) * (bounds[1] - threshold) + torch.ones(num_data) * threshold) * (-1 * (index_tensor - 1))
-        odor_conc[0, :] = below_tensor + above_tensor
-        
+    # Generate labels based on threshold on first odor channel
+    labels = (odor_conc[0, :] > threshold).long().to(device)
+
+    # Split data
+    train_conc = odor_conc[:, :num_training]
+    train_labels = labels[:num_training]
+    test_conc = odor_conc[:, num_training:]
+    test_labels = labels[num_training:]
+
+    return SimpleNamespace(
+        odor_conc=odor_conc,
+        labels=labels,
+        train_conc=train_conc,
+        train_labels=train_labels,
+        test_conc=test_conc,
+        test_labels=test_labels
+    )
+
+def generate_zero_dataset(m, n, device, num_data=10000, training_frac=0.8, threshold=0.1, lower_bound=0, upper_bound=1, zero_index=1):
+    """
+    Generate synthetic odor concentration data and labels based on a threshold but over a specified interval that 
+    need not be [0,1), along with a parameter to control how many rows are equal to zero.
+    
+    Args:
+        m (int): Input dimension
+        n (int): Output dimension (not used here, just for image folder naming)
+        device (torch.device): Computation device
+        num_data (int): Total number of samples
+        training_frac (float): Fraction of samples used for training
+        store_image (bool): If True, creates a folder for saving images
+        threshold (float): Threshold for label generation
+    
+    Returns:
+        A SimpleNamespace containing:
+            - odor_conc: [m x num_data] full concentration tensor
+            - labels: [num_data] binary labels
+            - train_conc, train_labels
+            - test_conc, test_labels
+    """
+    input_dim = m
+    num_training = int(num_data * training_frac)
+
+    # Generate input data on [lower_bound, upper_bound) with elements with indices beyond and including zero_array being set to zero
+    pre_odor_conc = torch.rand(input_dim, num_data)
+    pre_odor_conc = pre_odor_conc * (upper_bound - lower_bound) + torch.ones_like(pre_odor_conc) * lower_bound
+    pre_odor_conc[zero_index:, :] = 0
+    odor_conc = pre_odor_conc.to(device) 
+
     # Generate labels based on threshold on first odor channel
     labels = (odor_conc[0, :] > threshold).long().to(device)
 
