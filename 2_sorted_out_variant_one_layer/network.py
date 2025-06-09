@@ -60,19 +60,19 @@ def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balance
     pre_odor_conc = torch.rand(input_dim, num_data)
     pre_odor_conc = pre_odor_conc * (bounds[1] - bounds[0]) + torch.ones_like(pre_odor_conc) * bounds[0]
 
-    # Creates a sparse set of rows at and below index
-    if sparsity_idx != None:
-        pre_odor_conc[sparsity_idx:, :] = 0
-
-    odor_conc = pre_odor_conc.to(device) 
-
-    # Checks if user wants a balanced simulated odor dataset; better for supervised classification
+    # Checks if user wants a balanced simulated odor dataset; if True, makes the dataset roughly balanced according to 
     if is_balanced:
         index_tensor = (torch.rand(num_data) > 0.5).int()
         below_tensor = (torch.rand(num_data) * (threshold - bounds[0]) + torch.ones(num_data) * bounds[0]) * index_tensor
         above_tensor = (torch.rand(num_data) * (bounds[1] - threshold) + torch.ones(num_data) * threshold) * (-1 * (index_tensor - 1))
-        odor_conc[0, :] = below_tensor + above_tensor
+        pre_odor_conc[0, :] = below_tensor + above_tensor
         
+    # Creates a sparse set of rows at and below index
+    if sparsity_idx != None:
+        pre_odor_conc[sparsity_idx:, :] = 0
+    
+    odor_conc = pre_odor_conc.to(device) 
+
     # Generate labels based on threshold on first odor channel
     labels = (odor_conc[0, :] > threshold).long().to(device)
 
@@ -251,3 +251,18 @@ def set_random_mode(deterministic=True, seed=1000):
         random.seed(new_seed)
         np.random.seed(new_seed)
         print(f"[Random Mode] Randomized with seed {new_seed}")
+
+
+def normal_perturb(weights, mean, stddev, is_additive):
+    """ 
+    Perturb matrix W using a noise term that is Normally distributed.
+
+    Args:
+        weights: The [n x m] odorant-to-measurement 
+
+    """
+    noise_matrix = torch.mean()
+
+
+
+    return new_weights
