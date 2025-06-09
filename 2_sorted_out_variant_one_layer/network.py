@@ -1,4 +1,5 @@
 import torch
+import torch.distributions.normal as DN
 import torch.nn as nn
 import torch.nn.functional as F
 import os
@@ -26,6 +27,61 @@ class enose(nn.Module):
         output = F.sigmoid(self.fc1(x.mT)) 
         
         return output
+    
+    def scalar_perturb(self, scalar):
+        """ 
+        Perturbs matrix W using an scalar term.
+
+        Args:
+            self.W (Tensor): The [n x m] odorant-to-measurement matrix. 
+            scalar (float): The number that will be multiplied to matrix entries.
+        """
+
+        self.W *= scalar
+
+    def normal_perturb(self, mean, stddev, is_multiplicative, is_correlated, is_increase):
+        """ 
+        Perturbs matrix W using an additive/multiplicative noise term that is Normally distributed.
+
+        Args:
+            self.W (Tensor): The [n x m] odorant-to-measurement matrix. 
+            mean (float): The mean parameter for the Normal noise.
+            stddev (float): The standard deviation parameter for the Normal noise. 
+            is_multiplicative (bool): If True, an expression involving noise term will be multiplied to weight entries.
+            is_correlated (bool): If True, then an expression involving the noise term will be multiplied to increase/decrease each weight entry.
+            is_increase (bool): If True, then the matrix entries will increase. 
+        """
+
+        noise = DN.Normal(mean, stddev).sample()
+        print(noise)
+
+        if is_multiplicative:
+            if is_increase:
+                if is_correlated:
+                    self.W = self.W * (1 + noise)
+                else:
+                    # from original notebook
+                    return None
+            else:
+                if is_correlated:
+                    self.W = self.W * (1 + noise)
+                else:
+                    # from notebook 
+                    return None    
+        else:
+            if is_increase:
+                if is_correlated:
+                    self.W = self.W * (1 + noise)
+                else:
+                    # from original notebook
+                    return None
+            else:
+                if is_correlated:
+                    self.W = self.W * (1 + noise)
+                else:
+                    # from notebook    
+                    return None
+
 
 
 # ============ dataset and precision evaluation ============
@@ -252,17 +308,3 @@ def set_random_mode(deterministic=True, seed=1000):
         np.random.seed(new_seed)
         print(f"[Random Mode] Randomized with seed {new_seed}")
 
-
-def normal_perturb(weights, mean, stddev, is_additive):
-    """ 
-    Perturb matrix W using a noise term that is Normally distributed.
-
-    Args:
-        weights: The [n x m] odorant-to-measurement 
-
-    """
-    noise_matrix = torch.mean()
-
-
-
-    return new_weights
