@@ -124,6 +124,53 @@ def generate_custom_dataset(m, n, device, num_data=10000, training_frac=0.8, thr
         test_labels=test_labels
     )
 
+def generate_zero_dataset(m, n, device, num_data=10000, training_frac=0.8, threshold=0.1, lower_bound=0, upper_bound=1, zero_index=1):
+    """
+    Generate synthetic odor concentration data and labels based on a threshold but over a specified interval that 
+    need not be [0,1), along with a parameter to control how many rows are equal to zero.
+    
+    Args:
+        m (int): Input dimension
+        n (int): Output dimension (not used here, just for image folder naming)
+        device (torch.device): Computation device
+        num_data (int): Total number of samples
+        training_frac (float): Fraction of samples used for training
+        store_image (bool): If True, creates a folder for saving images
+        threshold (float): Threshold for label generation
+    
+    Returns:
+        A SimpleNamespace containing:
+            - odor_conc: [m x num_data] full concentration tensor
+            - labels: [num_data] binary labels
+            - train_conc, train_labels
+            - test_conc, test_labels
+    """
+    input_dim = m
+    num_training = int(num_data * training_frac)
+
+    # Generate input data on [lower_bound, upper_bound) with elements with indices beyond and including zero_array being set to zero
+    pre_odor_conc = torch.rand(input_dim, num_data)
+    pre_odor_conc = pre_odor_conc * (upper_bound - lower_bound) + torch.ones_like(pre_odor_conc) * lower_bound
+    pre_odor_conc[zero_index:, :] = 0
+    odor_conc = pre_odor_conc.to(device) 
+
+    # Generate labels based on threshold on first odor channel
+    labels = (odor_conc[0, :] > threshold).long().to(device)
+
+    # Split data
+    train_conc = odor_conc[:, :num_training]
+    train_labels = labels[:num_training]
+    test_conc = odor_conc[:, num_training:]
+    test_labels = labels[num_training:]
+
+    return SimpleNamespace(
+        odor_conc=odor_conc,
+        labels=labels,
+        train_conc=train_conc,
+        train_labels=train_labels,
+        test_conc=test_conc,
+        test_labels=test_labels
+    )
 
 def evaluate_random_batch(model, dataset, test_batch_size=20, threshold=0.5):
     """
