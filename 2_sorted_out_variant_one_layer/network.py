@@ -8,16 +8,14 @@ from types import SimpleNamespace
 import random
 import numpy as np
 
-
-# ============ the network architecture ============
+# ============ NETWORK ARCHITECTURE ============
 
 class enose(nn.Module):
     def __init__(self, init_parameters, activation = nn.Identity()): # initializes the network params
         super().__init__()
         self.m = init_parameters.m # input dimension
         self.n = init_parameters.n # meansurement dimension
-        self.W  = init_parameters.W  ## if init_parameters.W else 
-
+        self.W  = init_parameters.W  ## if init_parameters.W else
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         self.fc1 = nn.Linear( self.n, 1 ).to(device) # fully-connected layer that takes self.n inputs to produce 1 output
         self.activation = activation # sets the activation 
@@ -25,25 +23,14 @@ class enose(nn.Module):
     def forward(self, x): # runs a forward pass 
         x = torch.matmul(self.W, x) 
         output = F.sigmoid(self.fc1(x.mT)) 
-        
         return output
-    
-    def scalar_perturb(self, scalar):
+
+    def perturb_weights(self, normal_mode, mean, stddev, is_multiplicative, is_correlated, is_increase):
         """ 
-        Perturbs matrix W using an scalar term.
+        Perturbs matrix W using an additive/multiplicative noise term that is a scalar or normally distributed.
 
         Args:
-            self.W (Tensor): The [n x m] odorant-to-measurement matrix. 
-            scalar (float): The number that will be multiplied to matrix entries.
-        """
-
-        self.W *= scalar
-
-    def normal_perturb(self, mean, stddev, is_multiplicative, is_correlated, is_increase):
-        """ 
-        Perturbs matrix W using an additive/multiplicative noise term that is Normally distributed.
-
-        Args:
+            normal_mode (bool): If True, proceed with generating normally-distributed term. If False, the scalar is specified by the mean paramter.
             self.W (Tensor): The [n x m] odorant-to-measurement matrix. 
             mean (float): The mean parameter for the Normal noise.
             stddev (float): The standard deviation parameter for the Normal noise. 
@@ -52,39 +39,50 @@ class enose(nn.Module):
             is_increase (bool): If True, then the matrix entries will increase. 
         """
 
-        noise = DN.Normal(mean, stddev).sample()
-        print(noise)
+        if not normal_mode:
+            if is_multiplicative:
+                self.W *= mean
+            else: 
+                self.W += mean
+        elif normal_mode:
+            noise = DN.Normal(mean, stddev).sample()
+            print(f"Normal Noise Term: {noise}")
+            if is_multiplicative:
+                if is_increase:
+                    if is_correlated:
+                        self.W = self.W * (1 + noise)
+                    else:
+                        # from original notebook
+                        original_W = 
+                        random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
+                        self.W = (torch.abs(original_W) * random_int_tensor * percent + original_W).to(device)
 
-        if is_multiplicative:
-            if is_increase:
-                if is_correlated:
-                    self.W = self.W * (1 + noise)
+
+
+                        self.W = self.W
                 else:
-                    # from original notebook
-                    return None
+                    if is_correlated:
+                        self.W = self.W * (1 + noise)
+                    else:
+                        # from notebook 
+                        return None    
             else:
-                if is_correlated:
-                    self.W = self.W * (1 + noise)
+                if is_increase:
+                    if is_correlated:
+                        self.W = self.W * (1 + noise)
+                    else:
+                        # from original notebook
+                        return None
                 else:
-                    # from notebook 
-                    return None    
-        else:
-            if is_increase:
-                if is_correlated:
-                    self.W = self.W * (1 + noise)
-                else:
-                    # from original notebook
-                    return None
-            else:
-                if is_correlated:
-                    self.W = self.W * (1 + noise)
-                else:
-                    # from notebook    
-                    return None
+                    if is_correlated:
+                        self.W = self.W * (1 + noise)
+                    else:
+                        # from notebook    
+                        return None
 
 
 
-# ============ dataset and precision evaluation ============
+# ============ DATASET AND PRECISION EVALUATION ============
 
 def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balanced=True, threshold=0.1, bounds=(0,1), sparsity_idx=None):
     """
@@ -178,7 +176,7 @@ def evaluate_random_batch(model, dataset, test_batch_size=20, threshold=0.5):
     return accuracy
 
 
-# ============ training procedure ============
+# ============ TRAINING PROCEDURE ============
 
 def train_model(
     model,
@@ -196,6 +194,7 @@ def train_model(
     test_interval,
     print_interval,
     test_batch_size,
+    test_iteration_count,
     device
 ):
     """
@@ -243,23 +242,27 @@ def train_model(
         if step % test_interval == 0:
             model.eval()
             with torch.no_grad():
-                test_idx = torch.randint(0, num_data - num_training, (test_batch_size,))
-                x_test = test_conc[:, test_idx].to(device)
-                y_test = test_labels[test_idx].view(-1, 1).float().to(device)
+                step_test_accuracy = torch.zeros(test_iteration_count)
+                for idx in range(test_iteration_count):
+                    test_idx = torch.randint(0, num_data - num_training, (test_batch_size,))
+                    x_test = test_conc[:, test_idx].to(device)
+                    y_test = test_labels[test_idx].view(-1, 1).float().to(device)
 
-                pred = model(x_test)
-                predicted_labels = (pred > 0.5).float()
-                accuracy = (predicted_labels == y_test).float().mean().item()
-                accuracy_vec[step // test_interval] = accuracy
+                    pred = model(x_test)
+                    predicted_labels = (pred > 0.5).float()
+                    accuracy = (predicted_labels == y_test).float().mean().item()
+                    step_test_accuracy[idx] = accuracy
+                
+                accuracy_vec[step // test_interval] = torch.mean(step_test_accuracy)
 
                 if step % print_interval == 0:
-                    print(f"[Step {step}] Accuracy: {accuracy:.4f} | Train Loss: {loss.item():.4f}")
+                    print(f"[Step {step}] Mean Accuracy over {test_iteration_count} Iterations: {torch.mean(step_test_accuracy):.4f} | Train Loss: {loss.item():.4f}")
             model.train()
 
     return loss_vec, accuracy_vec
 
 
-# ============ testing procedure ============
+# ============ TESTING PROCEDURE ============
 def eval_model_accuracy(
     model,
     test_conc,
@@ -267,25 +270,36 @@ def eval_model_accuracy(
     num_data,
     num_training,
     test_batch_size,
+    test_iteration_count,
     device):
+    """
+    Evaluates the model accuracy by testing it on a series of random test batches.
+
+    Args:
+        test_batch_iterations (int): The number of test batches used for a single 
+
+    Returns:
+
+    """
 
     model.eval()
-    test_accuracy = torch.zeros(1)
+    test_accuracy = torch.zeros(test_iteration_count)
 
     with torch.no_grad():
-        test_idx = torch.randint(0, num_data - num_training, (test_batch_size,))
-        x_test = test_conc[:, test_idx].to(device)
-        y_test = test_labels[test_idx].view(-1, 1).float().to(device)
+        for idx in range(test_iteration_count):
+            test_idx = torch.randint(0, num_data - num_training, (test_batch_size,))
+            x_test = test_conc[:, test_idx].to(device)
+            y_test = test_labels[test_idx].view(-1, 1).float().to(device)
 
-        pred = model(x_test)
-        predicted_labels = (pred > 0.5).float()
-        accuracy = (predicted_labels == y_test).float().mean().item()
-        test_accuracy = accuracy
+            pred = model(x_test)
+            predicted_labels = (pred > 0.5).float()
+            accuracy = (predicted_labels == y_test).float().mean().item()
+            test_accuracy[idx] = accuracy
 
     return test_accuracy
 
 
-# ============ some basic functions ============
+# ============ SOME BASIC FUNCTIONS ============
 
 def set_random_mode(deterministic=True, seed=1000):
     """
