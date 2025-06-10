@@ -15,7 +15,7 @@ import os
 import matplotlib.pyplot as plt
 
 # Iterate over different sparsities
-list_of_sparsities = np.arange(0,99,10).tolist()
+list_of_sparsities = np.arange(0,49,5).tolist()
 for sparsity_index in list_of_sparsities:
     print(f"Starting Run with Sparsity Index={sparsity_index}...")
 

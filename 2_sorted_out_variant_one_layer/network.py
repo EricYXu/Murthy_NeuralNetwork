@@ -39,6 +39,8 @@ class enose(nn.Module):
             is_increase (bool): If True, then the matrix entries will increase. 
         """
 
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+
         if not normal_mode:
             if is_multiplicative:
                 self.W *= mean
@@ -52,14 +54,9 @@ class enose(nn.Module):
                     if is_correlated:
                         self.W = self.W * (1 + noise)
                     else:
-                        # from original notebook
-                        original_W = 
+                        original_W = self.W.clone()
                         random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
-                        self.W = (torch.abs(original_W) * random_int_tensor * percent + original_W).to(device)
-
-
-
-                        self.W = self.W
+                        self.W = (original_W * (1 + random_int_tensor * noise)).to(device)
                 else:
                     if is_correlated:
                         self.W = self.W * (1 + noise)
@@ -69,7 +66,7 @@ class enose(nn.Module):
             else:
                 if is_increase:
                     if is_correlated:
-                        self.W = self.W * (1 + noise)
+                        self.W = self.W + (1 + noise)
                     else:
                         # from original notebook
                         return None
