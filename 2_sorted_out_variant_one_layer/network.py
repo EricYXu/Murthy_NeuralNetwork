@@ -47,22 +47,11 @@ class enose(nn.Module):
             else: 
                 self.W += mean
         elif normal_mode:
-            noise = DN.Normal(mean, stddev).sample()
-            print(f"Normal Noise Term: {noise}")
+            noise = torch.randn(self.W.shape[0], self.W.shape[1])
             if is_multiplicative:
-                if is_correlated:
-                    self.W = self.W * (1 + noise)
-                else:
-                    original_W = self.W.clone()
-                    random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
-                    self.W = (original_W * (1 + random_int_tensor * noise)).to(device)
+                self.W = self.W * (1 + noise)
             else:
-                if is_correlated:
-                    self.W = self.W + noise
-                else:
-                    original_W = self.W.clone()
-                    random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
-                    self.W = (original_W + random_int_tensor * noise).to(device)
+                self.W = self.W + noise
 
     def set_weights(self, weights):
         """
