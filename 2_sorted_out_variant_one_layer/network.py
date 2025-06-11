@@ -47,7 +47,7 @@ class enose(nn.Module):
             else: 
                 self.W += mean
         elif normal_mode:
-            noise = torch.randn(self.W.shape[0], self.W.shape[1])
+            noise = stddev * torch.randn(self.W.shape[0], self.W.shape[1])
             if is_multiplicative:
                 self.W = self.W * (1 + noise)
             else:
