@@ -1,5 +1,5 @@
 """
-Script to gauge the effects weight perturbation has on model accuracy. 
+Script to gauge the effects scalar multiplicative weight perturbation has on model accuracy. 
 """
 
 # Imports
@@ -95,6 +95,7 @@ unperturbed_accuracy_vec = mean_accuracy * unperturbed_accuracy_vec
 
 # iterate over different perturbation amounts
 original_W = enose_network.W.clone()
+print(original_W)
 
 for idx, scalar in enumerate(list_of_scalars):
     print(f"Starting Run with Scalar={scalar}...")
@@ -102,11 +103,9 @@ for idx, scalar in enumerate(list_of_scalars):
     # Perturb weights
     enose_network.perturb_weights(is_normal, scalar, stddev, is_multiplicative, is_correlated)
     perturbed_accuracy_vec[idx] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
-    print(enose_network.W)
 
     # Reset weights to normal
-    enose_network.W = original_W.to(device)
-    print(enose_network.W)
+    enose_network.set_weights(original_W)
 
     print(f"Finished Run with Scalar={scalar}...")
 
@@ -117,7 +116,7 @@ plt.plot(list_of_scalars, unperturbed_accuracy_vec, label='Test Accuracy w/o Per
 plt.plot(list_of_scalars, perturbed_accuracy_vec, label='Test Accuracy w/ Perturb')
 plt.xlabel("Scalar")
 plt.ylabel("Mean Accuracy")
-plt.title(f"Mean Accuracy vs. Scalar ({lower_scalar} to {upper_scalar}): is_multiplicative={is_multiplicative}, is_correlated={is_correlated}")
+plt.title(f"Mean Accuracy vs. Scalar ({lower_scalar} to {upper_scalar-1}): is_multiplicative={is_multiplicative}, is_correlated={is_correlated}")
 plt.ylim(0, 1.05)
 plt.legend()
 plt.tight_layout()
