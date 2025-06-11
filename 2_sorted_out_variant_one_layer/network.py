@@ -64,6 +64,15 @@ class enose(nn.Module):
                     random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
                     self.W = (original_W + random_int_tensor * noise).to(device)
 
+    # def set_weights(self, weights):
+    #     """
+    #     Sets the weights of the neural network.
+
+    #     Args: 
+    #         weights: New version of odorant-to-measurement matrix.
+    #     """
+
+    #     self.W = weights
 
 # ============ DATASET AND PRECISION EVALUATION ============
 
