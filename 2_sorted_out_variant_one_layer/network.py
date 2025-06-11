@@ -25,7 +25,7 @@ class enose(nn.Module):
         output = F.sigmoid(self.fc1(x.mT)) 
         return output
 
-    def perturb_weights(self, normal_mode, mean, stddev, is_multiplicative, is_correlated, is_increase):
+    def perturb_weights(self, normal_mode, mean, stddev, is_multiplicative, is_correlated):
         """ 
         Perturbs matrix W using an additive/multiplicative noise term that is a scalar or normally distributed.
 
@@ -50,33 +50,19 @@ class enose(nn.Module):
             noise = DN.Normal(mean, stddev).sample()
             print(f"Normal Noise Term: {noise}")
             if is_multiplicative:
-                if is_increase:
-                    if is_correlated:
-                        self.W = self.W * (1 + noise)
-                    else:
-                        original_W = self.W.clone()
-                        random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
-                        self.W = (original_W * (1 + random_int_tensor * noise)).to(device)
+                if is_correlated:
+                    self.W = self.W * (1 + noise)
                 else:
-                    if is_correlated:
-                        self.W = self.W * (1 + noise)
-                    else:
-                        # from notebook 
-                        return None    
+                    original_W = self.W.clone()
+                    random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
+                    self.W = (original_W * (1 + random_int_tensor * noise)).to(device)
             else:
-                if is_increase:
-                    if is_correlated:
-                        self.W = self.W + (1 + noise)
-                    else:
-                        # from original notebook
-                        return None
+                if is_correlated:
+                    self.W = self.W + noise
                 else:
-                    if is_correlated:
-                        self.W = self.W * (1 + noise)
-                    else:
-                        # from notebook    
-                        return None
-
+                    original_W = self.W.clone()
+                    random_int_tensor = (2 * torch.randint(0,2,(original_W.shape[0], original_W.shape[1])) - 1).to(device)
+                    self.W = (original_W + random_int_tensor * noise).to(device)
 
 
 # ============ DATASET AND PRECISION EVALUATION ============

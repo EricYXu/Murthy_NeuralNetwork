@@ -15,14 +15,15 @@ import os
 import matplotlib.pyplot as plt
 
 # Iterate over different sparsities
-list_of_sparsities = np.arange(0,49,5).tolist()
-for sparsity_index in list_of_sparsities:
+list_of_sparsities = np.arange(0,99,10).tolist()
+accuracy_by_sparsity = torch.zeros(len(list_of_sparsities))
+for idx, sparsity_index in enumerate(list_of_sparsities):
     print(f"Starting Run with Sparsity Index={sparsity_index}...")
 
     # Setup
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") 
-    m = 50 # input dimension
-    n = 100 # measurement dimension
+    m = 100 # input dimension
+    n = 50 # measurement dimension
     seed = 1
     network.set_random_mode(True, seed)
 
@@ -89,6 +90,7 @@ for sparsity_index in list_of_sparsities:
     # Get mean accuracy
     num_step = len(accuracy_vec)
     mean_accuracy = torch.mean(accuracy_vec[num_step//2:-1])
+    accuracy_by_sparsity[idx] = mean_accuracy
 
     # Saves plot of training loss
     folder = "./eric_sparse_to_dense_figures"
@@ -138,9 +140,14 @@ for sparsity_index in list_of_sparsities:
 
     print(f"Finished Run with Sparsity Index={sparsity_index}...")
 
-
-
-
+# Plot the mean accuracy based on sparsity index
+folder = "./eric_sparse_to_dense_figures"
+plt.plot(list_of_sparsities,accuracy_by_sparsity)
+plt.xlabel("Sparsity Index")
+plt.ylabel("Mean Accuracy")
+plt.title("Mean Accuracy vs. Sparsity Index")
+plt.savefig(f"{folder}/mean_accuracy_vs_sparsity_m={100}_n={50}.pdf") 
+plt.close()
 
 
 
