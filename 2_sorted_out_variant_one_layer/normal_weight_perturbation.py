@@ -18,12 +18,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Iterate over different values
-noise_value = None
 num_iter = 100
-list_of_iterations = np.arange(1,num_iter+1,1).tolist()
-unperturbed_accuracy_vec = torch.ones(num_iter)
-add_perturbed_accuracy_vec = torch.zeros(num_iter)
-mult_perturbed_accuracy_vec = torch.zeros(num_iter)
+list_of_stddev = np.arange(0,11,1).tolist()
+unperturbed_accuracy_vec = torch.ones(len(list_of_stddev))
+add_perturbed_accuracy_vec = torch.zeros(len(list_of_stddev))
+mult_perturbed_accuracy_vec = torch.zeros(len(list_of_stddev))
 
 # Model Setup
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") 
@@ -96,43 +95,50 @@ unperturbed_accuracy_vec = mean_accuracy * unperturbed_accuracy_vec
 
 # Generate iterations of additive/multiplicative perturbation amounts
 original_W = enose_network.W.clone()
-for idx, iter in enumerate(list_of_iterations):
-    print(f"Starting Run with Iteration={iter}...")
+for idx, stddev in enumerate(list_of_stddev):
+    print(f"Starting Run with Stddev={stddev}...")
 
-    # Odorant-to-measurement perturbation parameters
-    is_normal = True
-    is_multiplicative = False
-    mean = 0
-    stddev = 1
+    add_perturb_tests = torch.zeros(num_iter)    
+    mult_perturb_tests = torch.zeros(num_iter)    
 
-    # Perturb weights additively 
-    enose_network.perturb_weights(is_normal, mean, stddev, is_multiplicative)
-    add_perturbed_accuracy_vec[idx] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
+    for iter in range(num_iter):
+        # Odorant-to-measurement perturbation parameters
+        is_normal = True
+        is_multiplicative = False
+        mean = 0
 
-    # Reset weights to original
-    enose_network.set_weights(original_W)
+        # Perturb weights additively 
+        enose_network.perturb_weights(is_normal, mean, stddev, is_multiplicative)
+        add_perturb_tests[iter] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
 
-    # Perturb weights multiplicatively
-    enose_network.perturb_weights(is_normal, mean, stddev, is_multiplicative)
-    mult_perturbed_accuracy_vec[idx] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
+        # Reset weights to original
+        enose_network.set_weights(original_W)
 
-    # Reset weights to original
-    enose_network.set_weights(original_W)
+        # Perturb weights multiplicatively
+        is_multiplicative = True
+        enose_network.perturb_weights(is_normal, mean, stddev, is_multiplicative)
+        mult_perturb_tests[iter] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
 
-    print(f"Finished Run with Iteration={iter}...")
+        # Reset weights to original
+        enose_network.set_weights(original_W)
+    
+    add_perturbed_accuracy_vec[idx] = torch.mean(add_perturb_tests)
+    mult_perturbed_accuracy_vec[idx] = torch.mean(mult_perturb_tests)
+
+    print(f"Finished Run with Stddev={stddev}...")
 
 # Saves plot of test accuracy
 folder = "./eric_normal_weight_perturb_figures"
 plt.figure(figsize=(8, 4))
-plt.plot(list_of_iterations, unperturbed_accuracy_vec, label='Test Accuracy w/o Perturb')
-plt.plot(list_of_iterations, add_perturbed_accuracy_vec, label='Test Accuracy w/ Additive Perturb')
-plt.plot(list_of_iterations, mult_perturbed_accuracy_vec, label='Test Accuracy w/ Multiplicative Perturb')
-plt.xlabel("Iteration Number")
+plt.plot(list_of_stddev, unperturbed_accuracy_vec, label='Test Accuracy w/o Perturb')
+plt.plot(list_of_stddev, add_perturbed_accuracy_vec, label='Test Accuracy w/ Additive Perturb')
+plt.plot(list_of_stddev, mult_perturbed_accuracy_vec, label='Test Accuracy w/ Multiplicative Perturb')
+plt.xlabel("Standard Deviation")
 plt.ylabel("Mean Accuracy")
-plt.title(f"Mean Accuracy by Iteration")
+plt.title(f"Mean Accuracy vs. Standard Deviation")
 plt.ylim(0, 1.05)
 plt.legend()
 plt.tight_layout()
 if store_image:
-    plt.savefig(f"{folder}/accuracy_normal_dist_perturbation_m={m}_n={n}.pdf")
+    plt.savefig(f"{folder}/accuracy_by_stddev_normal_dist_perturbation_m={m}_n={n}.pdf")
 plt.close()
