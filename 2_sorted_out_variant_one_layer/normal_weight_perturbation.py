@@ -4,8 +4,8 @@ Script to gauge the effects additive Normally-distributed weight perturbation ha
 
 """
 NOTES:
-- Additive: each term Wij = Wij + epsilon (where epsilon is sampled from N(0,1) for each entry)
-- Multiplicative: each term Wij = Wij * (1+epsilon) (where epsilon is sampled from N(0,1) for each entry)
+- Additive: each matrix term Wij = Wij + epsilon [where epsilon is sampled from N(0,1) for each entry]
+- Multiplicative: each matrix term Wij = Wij * (1+epsilon) [where epsilon is sampled from N(0,1) for each entry]
 """
 
 # Imports
@@ -19,14 +19,16 @@ import matplotlib.pyplot as plt
 
 # Iterate over different values
 noise_value = None
-list_of_iterations = np.arange(0,101,1).tolist()
-unperturbed_accuracy_vec = torch.ones(len(list_of_iterations))
-perturbed_accuracy_vec = torch.zeros(len(list_of_iterations))
+num_iter = 100
+list_of_iterations = np.arange(1,num_iter+1,1).tolist()
+unperturbed_accuracy_vec = torch.ones(num_iter)
+add_perturbed_accuracy_vec = torch.zeros(num_iter)
+mult_perturbed_accuracy_vec = torch.zeros(num_iter)
 
 # Model Setup
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") 
-m = 100 
-n = 50 
+m = 50
+n = 100
 seed = 1
 network.set_random_mode(True, seed)
 init_parameters = SimpleNamespace()
@@ -92,24 +94,29 @@ num_step = len(accuracy_vec)
 mean_accuracy = torch.mean(accuracy_vec[num_step//2:-1])
 unperturbed_accuracy_vec = mean_accuracy * unperturbed_accuracy_vec
 
-# Iterate over different additive perturbation amounts
+# Generate iterations of additive/multiplicative perturbation amounts
 original_W = enose_network.W.clone()
 for idx, iter in enumerate(list_of_iterations):
-
     print(f"Starting Run with Iteration={iter}...")
 
     # Odorant-to-measurement perturbation parameters
     is_normal = True
     is_multiplicative = False
-    is_correlated = True
     mean = 0
     stddev = 1
 
-    # Perturb weights
-    enose_network.perturb_weights(is_normal, mean, stddev, is_multiplicative, is_correlated)
-    perturbed_accuracy_vec[idx] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
+    # Perturb weights additively 
+    enose_network.perturb_weights(is_normal, mean, stddev, is_multiplicative)
+    add_perturbed_accuracy_vec[idx] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
 
-    # Reset weights to normal
+    # Reset weights to original
+    enose_network.set_weights(original_W)
+
+    # Perturb weights multiplicatively
+    enose_network.perturb_weights(is_normal, mean, stddev, is_multiplicative)
+    mult_perturbed_accuracy_vec[idx] = torch.mean(network.eval_model_accuracy(enose_network, test_conc, test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
+
+    # Reset weights to original
     enose_network.set_weights(original_W)
 
     print(f"Finished Run with Iteration={iter}...")
@@ -118,13 +125,14 @@ for idx, iter in enumerate(list_of_iterations):
 folder = "./eric_normal_weight_perturb_figures"
 plt.figure(figsize=(8, 4))
 plt.plot(list_of_iterations, unperturbed_accuracy_vec, label='Test Accuracy w/o Perturb')
-plt.plot(list_of_iterations, perturbed_accuracy_vec, label='Test Accuracy w/ Perturb')
-plt.xlabel("Scalar")
+plt.plot(list_of_iterations, add_perturbed_accuracy_vec, label='Test Accuracy w/ Additive Perturb')
+plt.plot(list_of_iterations, mult_perturbed_accuracy_vec, label='Test Accuracy w/ Multiplicative Perturb')
+plt.xlabel("Iteration Number")
 plt.ylabel("Mean Accuracy")
-plt.title(f"Mean Accuracy vs. Scalar ({lower_scalar} to {upper_scalar-1}): is_multiplicative={is_multiplicative}, is_correlated={is_correlated}")
+plt.title(f"Mean Accuracy by Iteration")
 plt.ylim(0, 1.05)
 plt.legend()
 plt.tight_layout()
 if store_image:
-    plt.savefig(f"{folder}/accuracy_by_perturb_{lower_scalar}_to_{upper_scalar}_is_multiplicative={is_multiplicative}_is_correlated={is_correlated}_m={m}_n={n}.pdf")
+    plt.savefig(f"{folder}/accuracy_normal_dist_perturbation_m={m}_n={n}.pdf")
 plt.close()

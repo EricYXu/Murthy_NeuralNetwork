@@ -25,7 +25,7 @@ class enose(nn.Module):
         output = F.sigmoid(self.fc1(x.mT)) 
         return output
 
-    def perturb_weights(self, normal_mode, mean, stddev, is_multiplicative, is_correlated):
+    def perturb_weights(self, normal_mode, mean, stddev, is_multiplicative):
         """ 
         Perturbs matrix W using an additive/multiplicative noise term that is a scalar or normally distributed.
 
@@ -38,16 +38,15 @@ class enose(nn.Module):
             is_correlated (bool): If True, then an expression involving the noise term will be multiplied to increase/decrease each weight entry.
             is_increase (bool): If True, then the matrix entries will increase. 
         """
-
+        
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-
         if not normal_mode:
             if is_multiplicative:
                 self.W *= mean
             else: 
                 self.W += mean
         elif normal_mode:
-            noise = stddev * torch.randn(self.W.shape[0], self.W.shape[1])
+            noise = stddev * torch.randn(self.W.shape[0], self.W.shape[1]).to(device)
             if is_multiplicative:
                 self.W = self.W * (1 + noise)
             else:
