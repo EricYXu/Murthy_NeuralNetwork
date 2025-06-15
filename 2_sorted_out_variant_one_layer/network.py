@@ -64,7 +64,7 @@ class enose(nn.Module):
 
 # ============ DATASET AND PRECISION EVALUATION ============
 
-def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balanced=True, threshold=0.1, bounds=(0,1), sparsity_idx=None):
+def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balanced=True, threshold=0.1, bounds=(0,1), sparsity=None):
     """
     Generate a balanced/unbalanced synthetic odor concentration data and labels based on a threshold.
     
@@ -101,9 +101,10 @@ def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balance
         above_tensor = (torch.rand(num_data) * (bounds[1] - threshold) + torch.ones(num_data) * threshold) * (-1 * (index_tensor - 1))
         pre_odor_conc[0, :] = below_tensor + above_tensor
         
-    # Creates a sparse set of rows at and below index
-    if sparsity_idx != None:
-        pre_odor_conc[sparsity_idx:, :] = 0
+    # Randomly chooses [sparsity] entries to be equal to zero
+    if sparsity != None:
+        # TODO: fix this to be more random 
+        pre_odor_conc[sparsity:, :] = 0
     
     odor_conc = pre_odor_conc.to(device) 
 

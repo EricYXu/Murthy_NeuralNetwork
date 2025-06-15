@@ -93,7 +93,7 @@ for idx, sparsity_index in enumerate(list_of_sparsities):
     accuracy_by_sparsity[idx] = mean_accuracy
 
     # Saves plot of training loss
-    folder = "./eric_sparse_to_dense_figures"
+    folder = "./eric_sparse_training_figures"
     plt.plot(loss_vec)
     plt.xlabel("Step")
     plt.ylabel("Loss")
@@ -141,7 +141,7 @@ for idx, sparsity_index in enumerate(list_of_sparsities):
     print(f"Finished Run with Sparsity Index={sparsity_index}...")
 
 # Plot the mean accuracy based on sparsity index
-folder = "./eric_sparse_to_dense_figures"
+folder = "./eric_sparse_training_figures"
 plt.plot(list_of_sparsities,accuracy_by_sparsity)
 plt.xlabel("Sparsity Index")
 plt.ylabel("Mean Accuracy")
