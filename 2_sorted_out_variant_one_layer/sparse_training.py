@@ -1,5 +1,5 @@
 """
-Script to more formally obtain training loss vs. step and test accuracy vs. step plots with different 
+Script to obtain training loss vs. step and training test accuracy vs. step plots with different 
 degrees of sparcity in the training dataset. 
 """
 
@@ -105,6 +105,7 @@ for idx, sparsity_index in enumerate(list_of_sparsities):
     # Saves plot of test accuracy
     plt.figure(figsize=(8, 4))
     plt.plot(torch.arange(0, steps, 50), accuracy_vec, label='Test Accuracy')
+    plt.axhline(y=0.5, color='red', linestyle=":")
     plt.xlabel("Training Step")
     plt.ylabel("Accuracy")
     plt.title(f"Odor Detection Accuracy Over Training, with a mean of {mean_accuracy:.3f}")

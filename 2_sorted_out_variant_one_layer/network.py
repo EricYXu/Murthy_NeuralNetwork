@@ -94,17 +94,18 @@ def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balance
     pre_odor_conc = torch.rand(input_dim, num_data)
     pre_odor_conc = pre_odor_conc * (bounds[1] - bounds[0]) + torch.ones_like(pre_odor_conc) * bounds[0]
 
-    # Checks if user wants a balanced simulated odor dataset; if True, makes the dataset roughly balanced according to 
+    # Checks if user wants a balanced simulated odor dataset; if True, makes the dataset roughly balanced 
     if is_balanced:
         index_tensor = (torch.rand(num_data) > 0.5).int()
         below_tensor = (torch.rand(num_data) * (threshold - bounds[0]) + torch.ones(num_data) * bounds[0]) * index_tensor
         above_tensor = (torch.rand(num_data) * (bounds[1] - threshold) + torch.ones(num_data) * threshold) * (-1 * (index_tensor - 1))
         pre_odor_conc[0, :] = below_tensor + above_tensor
         
-    # Randomly chooses [sparsity] entries to be equal to zero
+    # Randomly chooses [sparsity] random entries to be equal to zero
     if sparsity != None:
-        # TODO: fix this to be more random 
-        pre_odor_conc[sparsity:, :] = 0
+        sparse_indices = np.random.choice(range(0,m,1),(sparsity,),replace=False)
+        for idx in sparse_indices:
+            pre_odor_conc[idx, :] = 0
     
     odor_conc = pre_odor_conc.to(device) 
 
@@ -257,10 +258,16 @@ def eval_model_accuracy(
     Evaluates the model accuracy by testing it on a series of random test batches.
 
     Args:
-        test_batch_iterations (int): The number of test batches used for a single 
+        model: PyTorch model (must be already moved to device).
+        test_conc, test_labels: Testing data and labels.
+        num_data: Total data size.
+        num_training: Number of training samples.
+        test_batch_size: Batch size for testing accuracy.
+        test_iteration_count: Number of batches to test accuracy. 
+        device: torch.device to use.
 
     Returns:
-
+        Tensor of length test_iteration_count containing test_batch accuracies. 
     """
 
     model.eval()

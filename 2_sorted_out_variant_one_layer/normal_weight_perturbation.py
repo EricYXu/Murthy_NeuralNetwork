@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 # Iterate over different values
 num_iter = 100
-list_of_stddev = np.arange(0,3,1).tolist()
+list_of_stddev = np.arange(0,6,1).tolist()
 unperturbed_accuracy_vec = torch.ones(len(list_of_stddev))
 add_perturbed_accuracy_vec = torch.zeros(len(list_of_stddev))
 mult_perturbed_accuracy_vec = torch.zeros(len(list_of_stddev))
@@ -150,6 +150,7 @@ print(mult_75p.numpy())
 folder = "./eric_normal_weight_perturb_figures"
 plt.figure(figsize=(8, 4))
 plt.plot(list_of_stddev, unperturbed_accuracy_vec, label='Test Accuracy w/o Perturb')
+plt.axhline(y=0.5, color='red', linestyle=":")
 plt.errorbar(list_of_stddev, add_perturbed_accuracy_vec, yerr=add_err, marker='o', capsize=5, capthick=1, ecolor="black", label='Test Accuracy w/ Additive Perturb')
 plt.errorbar(list_of_stddev, mult_perturbed_accuracy_vec, yerr=mult_err, marker='o', capsize=5, capthick=1, ecolor="black", label='Test Accuracy w/ Multiplicative Perturb')
 
@@ -157,7 +158,7 @@ plt.errorbar(list_of_stddev, mult_perturbed_accuracy_vec, yerr=mult_err, marker=
 # plt.plot(list_of_stddev, mult_perturbed_accuracy_vec, label='Test Accuracy w/ Multiplicative Perturb')
 plt.xlabel("Standard Deviation")
 plt.ylabel("Mean Accuracy")
-plt.title(f"Mean Accuracy vs. Standard Deviation (25% and 75% Quantile Bars)") 
+plt.title(f"Mean Accuracy vs. Standard Deviation (25% and 75% Quantile Bars), m={m}, n={n}") 
 plt.ylim(0, 1.10)
 plt.legend()
 plt.tight_layout()

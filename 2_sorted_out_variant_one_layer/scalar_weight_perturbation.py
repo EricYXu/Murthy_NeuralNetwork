@@ -114,6 +114,7 @@ folder = "./eric_weight_perturb_2_figures"
 plt.figure(figsize=(8, 4))
 plt.plot(list_of_scalars, unperturbed_accuracy_vec, label='Test Accuracy w/o Perturb')
 plt.plot(list_of_scalars, perturbed_accuracy_vec, label='Test Accuracy w/ Perturb')
+plt.axhline(y=0.5, color='red', linestyle=":")
 plt.xlabel("Scalar")
 plt.ylabel("Mean Accuracy")
 plt.title(f"Mean Accuracy vs. Scalar ({lower_scalar} to {upper_scalar-1}): is_multiplicative={is_multiplicative}, is_correlated={is_correlated}")
