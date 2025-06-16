@@ -103,9 +103,10 @@ def generate_dataset(m, n, device, num_data=10000, training_frac=0.8, is_balance
         
     # Randomly chooses [sparsity] random entries to be equal to zero
     if sparsity != None:
-        sparse_indices = np.random.choice(range(0,m,1),(sparsity,),replace=False)
-        for idx in sparse_indices:
-            pre_odor_conc[idx, :] = 0
+        for data_idx in range(num_data):
+            sparse_indices = np.random.choice(range(0,m,1),(sparsity,),replace=False)
+            for idx in sparse_indices:
+                pre_odor_conc[idx, data_idx] = 0
     
     odor_conc = pre_odor_conc.to(device) 
 

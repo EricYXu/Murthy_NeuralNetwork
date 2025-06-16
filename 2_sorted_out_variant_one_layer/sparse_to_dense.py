@@ -24,8 +24,8 @@ def main() -> None:
     network.set_random_mode(True, seed)
     store_image = True
 
-    odorant_dim = 100
-    measurement_dim = 50
+    odorant_dim = 50
+    measurement_dim = 100
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") 
     num_data = 10000
     dense_training_frac = 0.2
@@ -43,12 +43,14 @@ def main() -> None:
     sparsities = np.arange(0, odorant_dim + 1, 5)  
     original_accuracy = torch.ones(len(sparsities)) 
     sparsity_accuracies = torch.zeros(len(sparsities))
+    accuracy_25p = torch.zeros(len(sparsities))
+    accuracy_75p = torch.zeros(len(sparsities))
 
     for idx, sparsity in enumerate(sparsities):
         print(f"Started Run with Sparsity={sparsity}...")
 
         sparse_training_frac = 0.8
-        sparse_dataset = network.generate_dataset(odorant_dim, measurement_dim, device, num_data, sparse_training_frac, is_balanced, threshold, bounds, sparsity)
+        sparse_dataset = network.generate_dataset(odorant_dim, measurement_dim, device, num_data, sparse_training_frac, is_balanced, threshold, bounds, sparsity)        
         sparse_train_conc = sparse_dataset.train_conc
         sparse_train_labels = sparse_dataset.train_labels
 
@@ -89,20 +91,26 @@ def main() -> None:
             device
         )
 
-        sparsity_accuracy = torch.mean(network.eval_model_accuracy(enose_network, dense_test_conc, dense_test_labels, num_data, num_training, test_batch_size, test_iteration_count, device))
+        accuracy_vec = network.eval_model_accuracy(enose_network, dense_test_conc, dense_test_labels, num_data, num_training, test_batch_size, test_iteration_count, device)
         if idx == 0:
-            original_accuracy = sparsity_accuracy * original_accuracy 
+            original_accuracy = torch.mean(accuracy_vec) * original_accuracy 
         else:
-            sparsity_accuracies[idx - 1] = sparsity_accuracy
-        print(f"Finished Run with Sparsity={sparsity}...")
+            sparsity_accuracies[idx - 1] = torch.mean(accuracy_vec)
+            accuracy_25p[idx - 1] = torch.quantile(accuracy_vec, 0.25)
+            accuracy_75p[idx - 1] = torch.quantile(accuracy_vec, 0.75)
+
+        print(f"Finished Run with Sparsity={sparsity}.")
+
+    sparsity_err = np.vstack([sparsity_accuracies.numpy() - accuracy_25p.numpy(),  accuracy_75p.numpy() - sparsity_accuracies.numpy()])
 
     folder = "./eric_sparse_to_dense_figures"
     plt.figure(figsize=(8, 4))
     plt.plot(sparsities, original_accuracy, label='Test Accuracy w/o Sparsity')
-    plt.plot(sparsities, sparsity_accuracies, label='Test Accuracy w/ Sparsity')
-    plt.xlabel("Sparsity")
-    plt.ylabel(f"Mean Test Accuracy over {test_iteration_count} Iterations")
-    plt.title(f"Mean Accuracy vs. Sparsity")
+    plt.errorbar(sparsities, sparsity_accuracies, yerr=sparsity_err, marker='o', capsize=5, capthick=1, ecolor="black", label='Test Accuracy w/ Sparsity')
+    plt.axhline(y=0.5, color='red', linestyle=":")
+    plt.xlabel("Sparsity (# of Entries Zeroed)")
+    plt.ylabel(f"Mean Test Accuracy")
+    plt.title(f"Mean Accuracy vs. Sparsity over {test_iteration_count} Iterations w/ m={odorant_dim}, n={measurement_dim} (25% & 75% Quantile Errorbars)")
     plt.ylim(0, 1.10) 
     if store_image:
         plt.savefig(f"{folder}/accuracy_by_sparsity_odorantdim={odorant_dim}_measuredim={measurement_dim}.pdf")
