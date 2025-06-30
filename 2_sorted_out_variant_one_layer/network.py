@@ -311,3 +311,39 @@ def set_random_mode(deterministic=True, seed=1000):
         np.random.seed(new_seed)
         print(f"[Random Mode] Randomized with seed {new_seed}")
 
+# ===== ADDITIONAL DATASET GENERATION =====
+
+def generate_binary_dataset(m, n, device, num_data=10000, training_frac=0.8, sparsity=0.5):
+    """
+    Generate a balanced synthetic one-hot encoding dataset and labels based on a presence in the first entry. Sparsity is defined to
+    be the probability that a particular entry is set to zero.
+    """
+    input_dim = m
+    num_training = int(num_data * training_frac)
+
+    # Generate input data sampled from {0,1}, with labels, then splitting
+    pre_odor_conc = torch.ones(input_dim, num_data)
+    for i in range(input_dim):
+        if i != 0:
+            random_row = torch.rand(num_data) < sparsity
+            pre_odor_conc[i,:] = random_row
+        else:
+            first_entries = torch.rand(num_data) < 0.5
+            pre_odor_conc[i,:] = first_entries
+    odor_conc = pre_odor_conc.to(device) 
+    labels = (odor_conc[0, :] == 1).long().to(device)
+
+    train_conc = odor_conc[:, :num_training]
+    train_labels = labels[:num_training]
+    test_conc = odor_conc[:, num_training:]
+    test_labels = labels[num_training:]
+
+    return SimpleNamespace(
+        odor_conc=odor_conc,
+        labels=labels,
+        train_conc=train_conc,
+        train_labels=train_labels,
+        test_conc=test_conc,
+        test_labels=test_labels
+    )
+
