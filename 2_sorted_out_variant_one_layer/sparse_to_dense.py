@@ -1,3 +1,12 @@
+import sys
+import network
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from types import SimpleNamespace 
+import numpy as np
+import matplotlib.pyplot as plt
+
 """
 sparse_to_dense.py 
 
@@ -8,15 +17,6 @@ Usage:
     python3 sparse_to_dense.py
 
 """
-
-import sys
-import network
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from types import SimpleNamespace 
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 def main() -> None:
@@ -40,7 +40,7 @@ def main() -> None:
     dense_test_conc = dense_dataset.test_conc
     dense_test_labels = dense_dataset.test_labels
 
-    sparsities = np.arange(0, odorant_dim + 1, 5)  
+    sparsities = np.arange(0, odorant_dim, 5)  # odorant_dim+1 before 
     original_accuracy = torch.ones(len(sparsities)) 
     sparsity_accuracies = torch.zeros(len(sparsities))
     accuracy_25p = torch.zeros(len(sparsities))
@@ -113,7 +113,7 @@ def main() -> None:
     plt.title(f"Mean Accuracy vs. Sparsity over {test_iteration_count} Iterations w/ m={odorant_dim}, n={measurement_dim} (25% & 75% Quantile Errorbars)")
     plt.ylim(0, 1.10) 
     if store_image:
-        plt.savefig(f"{folder}/accuracy_by_sparsity_odorantdim={odorant_dim}_measuredim={measurement_dim}.pdf")
+        plt.savefig(f"{folder}/revised_accuracy_by_sparsity_odorantdim={odorant_dim}_measuredim={measurement_dim}.pdf")
     plt.close()
 
 if __name__ == "__main__":
